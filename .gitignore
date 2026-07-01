@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.env
+.env.production
+.env.development
+.env.local
+.DS_Store
+.idea/
+.vscode/
+*.log
+webhook-engine-mongo/
+webhook-engine-redis/

@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # MongoDB — primary data store
+  mongodb:
+    image: mongo:7
+    container_name: webhook-engine-mongo
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis — used by BullMQ for job queues and by the idempotency interceptor
+  redis:
+    image: redis:7-alpine
+    container_name: webhook-engine-redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend — NestJS application
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: webhook-engine-backend
+    ports:
+      - '3000:3000'
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/webhook-engine
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PORT=3000
+      - FRONTEND_URL=http://localhost:5173
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Frontend — React + Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: webhook-engine-frontend
+    ports:
+      - '5173:5173'
+    environment:
+      - VITE_API_URL=http://localhost:3000
+    depends_on:
+      - backend
+
+volumes:
+  mongodb_data:
