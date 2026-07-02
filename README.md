@@ -10,10 +10,13 @@ Everything runs reliably in the background. If something crashes or an external 
 
 You only need **Docker Desktop** installed. That's it. No Node.js, no MongoDB, no Redis - Docker handles all of it.
 
+> **Before you begin:** Make sure **Docker Desktop is open and running** on your machine. You should see the Docker whale icon in your system tray (bottom-right of the taskbar). If Docker is not running, the `docker-compose` commands will fail.
+
 ### Step 1 - Download the code
 
 Open a terminal and run:
 
+Mac / Linux / Windows (any terminal):
 ```bash
 git clone https://github.com/lalitraj881/Webhook-Engine.git
 cd Webhook-Engine
@@ -23,23 +26,32 @@ cd Webhook-Engine
 
 This creates a config file the app needs to know things like database addresses and ports.
 
-Mac / Linux:
+Mac / Linux (bash):
 ```bash
 cp .env.example .env
 cp .env.example backend/.env
 ```
 
-Windows (PowerShell):
+Windows - Command Prompt (CMD):
+```cmd
+copy .env.example .env
+copy .env.example backend\.env
+```
+
+Windows - PowerShell:
 ```powershell
 Copy-Item .env.example .env
-Copy-Item .env.example backend/.env
+Copy-Item .env.example backend\.env
 ```
 
 ### Step 3 - Start everything
 
-This one command downloads, builds, and starts the database, queue, backend API, and dashboard all at once:
+This one command downloads, builds, and starts the database, queue, backend API, and dashboard all at once.
 
-```bash
+> **Make sure Docker Desktop is running before executing this command.**
+
+Works in CMD, PowerShell, and bash — all the same:
+```cmd
 docker-compose up -d --build
 ```
 
@@ -65,12 +77,17 @@ Open a new terminal window in the project root folder before running these.
 
 This sends a fake Shopify order for $750 to Company A ("Acme Corp"). They have a rule that fires on any order over $500.
 
-Mac / Linux:
+Mac / Linux (bash):
 ```bash
 ./scripts/send-webhook.sh 6a460515c610ca63064b6027
 ```
 
-Windows:
+Windows - Command Prompt (CMD):
+```cmd
+powershell -ExecutionPolicy Bypass -File scripts\send-webhook.ps1 -TenantId 6a460515c610ca63064b6027
+```
+
+Windows - PowerShell:
 ```powershell
 .\scripts\send-webhook.ps1 -TenantId 6a460515c610ca63064b6027
 ```
@@ -94,12 +111,17 @@ Each row shows "1" in the Attempts column, meaning it worked first try. Click "V
 
 This sends the exact same webhook two times, one second apart.
 
-Mac / Linux:
+Mac / Linux (bash):
 ```bash
 ./scripts/send-duplicate.sh 6a460515c610ca63064b6027
 ```
 
-Windows:
+Windows - Command Prompt (CMD):
+```cmd
+powershell -ExecutionPolicy Bypass -File scripts\send-duplicate.ps1 -TenantId 6a460515c610ca63064b6027
+```
+
+Windows - PowerShell:
 ```powershell
 .\scripts\send-duplicate.ps1 -TenantId 6a460515c610ca63064b6027
 ```
@@ -121,12 +143,17 @@ This sends a webhook to Company B ("Beta Store"). Their rule is deliberately con
 
 > Note: You can also use `send-webhook.ps1` with Beta Store's tenant ID and you'll get the same result - Beta Store's failure rule listens for the same `shopify / order.created` event type.
 
-Mac / Linux:
+Mac / Linux (bash):
 ```bash
 ./scripts/trigger-failure.sh 6bb71626d721db74175c7138
 ```
 
-Windows:
+Windows - Command Prompt (CMD):
+```cmd
+powershell -ExecutionPolicy Bypass -File scripts\trigger-failure.ps1 -TenantId 6bb71626d721db74175c7138
+```
+
+Windows - PowerShell:
 ```powershell
 .\scripts\trigger-failure.ps1 -TenantId 6bb71626d721db74175c7138
 ```
@@ -152,18 +179,22 @@ Switch to "Beta Store" in the top-right tenant dropdown first.
 
 ## Troubleshooting & Useful Docker Commands
 
+All `docker-compose` commands work the same in **CMD, PowerShell, and bash**.
+
+> **Docker Desktop must be running** before any of these commands will work.
+
 **See what the app is doing right now:**
-```bash
+```cmd
 docker-compose logs -f
 ```
 
 **See only the backend logs (good for watching jobs run in real-time):**
-```bash
+```cmd
 docker-compose logs -f backend
 ```
 
 **Restart the app cleanly:**
-```bash
+```cmd
 docker-compose down
 docker-compose up -d --build
 ```
@@ -171,9 +202,15 @@ docker-compose up -d --build
 **Wipe the database and start completely fresh:**
 
 The demo tenants and rules get re-created automatically on the next boot, so your test scripts will still work.
-```bash
+```cmd
 docker-compose down -v
 docker-compose up -d --build
+```
+
+**If you get a "container name already in use" error:**
+```cmd
+docker rm -f webhook-engine-mongo webhook-engine-redis webhook-engine-backend webhook-engine-frontend
+docker-compose up -d
 ```
 
 ---
