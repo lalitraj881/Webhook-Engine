@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Observable, of } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
+import { createHash } from 'crypto';
 import Redis from 'ioredis';
 
 /**
@@ -48,11 +49,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
     // Extract event ID from payload or headers
     // Platforms typically send a unique event identifier
     const eventId =
-      body.eventId ||
-      body.id ||
+      body?.eventId ||
+      body?.id ||
       request.headers['x-webhook-id'] ||
       request.headers['x-shopify-webhook-id'] ||
-      this.generateFallbackId(body);
+      this.generateFallbackId(body || {});
 
     const idempotencyKey = `idemp:${tenantId}:${source}:${eventId}`;
 
@@ -85,9 +86,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
    * This handles cases where the external platform doesn't send an explicit event ID.
    */
   private generateFallbackId(body: Record<string, any>): string {
-    const crypto = require('crypto');
-    return crypto
-      .createHash('sha256')
+    return createHash('sha256')
       .update(JSON.stringify(body))
       .digest('hex')
       .substring(0, 16);

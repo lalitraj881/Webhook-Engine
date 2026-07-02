@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { Terminal, Copy } from 'lucide-react';
 
 interface Stats {
   total: number;
@@ -29,6 +30,10 @@ export default function Dashboard({ tenantId }: Props) {
     const interval = setInterval(fetchStats, 2000); // Auto-refresh every 2s
     return () => clearInterval(interval);
   }, [tenantId]);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
 
   if (loading || !stats) {
     return (
@@ -65,25 +70,59 @@ export default function Dashboard({ tenantId }: Props) {
       </div>
 
       <div className="detail-panel">
-        <h3>🧪 Quick Test Commands</h3>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
-          Send a test webhook to see the pipeline in action:
+        <h3><Terminal size={20} className="logo-icon" /> Quick Test Commands</h3>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '16px' }}>
+          Send a test webhook to see the pipeline in action. Note: Run these from the project root directory.
         </p>
-        <div className="code-block">
-{`# Send a Shopify order webhook (triggers rules for this tenant)
-curl -X POST http://localhost:3000/webhooks/${tenantId}/shopify \\
-  -H "Content-Type: application/json" \\
-  -d '{"eventType":"order.created","id":"evt_'$(date +%s)'","order":{"total_price":750,"currency":"USD","customer":"John Doe"}}'
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="code-block" style={{ position: 'relative' }}>
+            <button 
+              className="btn btn-ghost btn-sm" 
+              style={{ position: 'absolute', right: '12px', top: '12px', padding: '4px' }}
+              onClick={() => copyToClipboard(`.\\scripts\\send-webhook.ps1 -TenantId ${tenantId}`)}
+              title="Copy command"
+            >
+              <Copy size={14} />
+            </button>
+            <div className="code-comment"># 1. Send a Shopify order webhook (triggers rules for this tenant)</div>
+            <div style={{ color: '#a78bfa' }}># Windows (PowerShell)</div>
+            <div>.\scripts\send-webhook.ps1 -TenantId {tenantId}</div>
+            <div style={{ color: '#a78bfa', marginTop: '8px' }}># Mac / Linux</div>
+            <div>./scripts/send-webhook.sh {tenantId}</div>
+          </div>
 
-# Send a duplicate (should be deduplicated)
-curl -X POST http://localhost:3000/webhooks/${tenantId}/shopify \\
-  -H "Content-Type: application/json" \\
-  -d '{"eventType":"order.created","id":"evt_duplicate_test","order":{"total_price":100}}'
+          <div className="code-block" style={{ position: 'relative' }}>
+            <button 
+              className="btn btn-ghost btn-sm" 
+              style={{ position: 'absolute', right: '12px', top: '12px', padding: '4px' }}
+              onClick={() => copyToClipboard(`.\\scripts\\send-duplicate.ps1 -TenantId ${tenantId}`)}
+              title="Copy command"
+            >
+              <Copy size={14} />
+            </button>
+            <div className="code-comment"># 2. Send a duplicate (should be deduplicated automatically)</div>
+            <div style={{ color: '#a78bfa' }}># Windows (PowerShell)</div>
+            <div>.\scripts\send-duplicate.ps1 -TenantId {tenantId}</div>
+            <div style={{ color: '#a78bfa', marginTop: '8px' }}># Mac / Linux</div>
+            <div>./scripts/send-duplicate.sh {tenantId}</div>
+          </div>
 
-# Trigger a payment failure event
-curl -X POST http://localhost:3000/webhooks/${tenantId}/stripe \\
-  -H "Content-Type: application/json" \\
-  -d '{"eventType":"payment.failed","id":"evt_pay_'$(date +%s)'","amount":250,"customer":"Jane Doe"}'`}
+          <div className="code-block" style={{ position: 'relative' }}>
+            <button 
+              className="btn btn-ghost btn-sm" 
+              style={{ position: 'absolute', right: '12px', top: '12px', padding: '4px' }}
+              onClick={() => copyToClipboard(`.\\scripts\\trigger-failure.ps1 -TenantId ${tenantId}`)}
+              title="Copy command"
+            >
+              <Copy size={14} />
+            </button>
+            <div className="code-comment"># 3. Trigger a failing action to test retry backoff (use on Beta Store)</div>
+            <div style={{ color: '#a78bfa' }}># Windows (PowerShell)</div>
+            <div>.\scripts\trigger-failure.ps1 -TenantId {tenantId}</div>
+            <div style={{ color: '#a78bfa', marginTop: '8px' }}># Mac / Linux</div>
+            <div>./scripts/trigger-failure.sh {tenantId}</div>
+          </div>
         </div>
       </div>
     </div>

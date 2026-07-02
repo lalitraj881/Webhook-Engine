@@ -57,23 +57,23 @@ export class JobsService {
       error?: { message: string; code?: string; httpStatus?: number; stack?: string };
     },
   ): Promise<void> {
-    const update: any = { status, updatedAt: new Date() };
+    const setFields: Record<string, unknown> = {
+      status,
+      updatedAt: new Date(),
+    };
 
     if (status === 'completed' || status === 'failed') {
-      update.completedAt = new Date();
+      setFields.completedAt = new Date();
     }
 
-    const pushOp: any = {};
+    const updateQuery: Record<string, unknown> = { $set: setFields };
     if (attemptData) {
-      pushOp.attempts = attemptData;
+      updateQuery.$push = { attempts: attemptData };
     }
 
     await this.jobHistoryModel.updateOne(
       { _id: new Types.ObjectId(jobId) },
-      {
-        $set: update,
-        ...(attemptData ? { $push: pushOp } : {}),
-      },
+      updateQuery,
     );
   }
 

@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Tenant, TenantDocument } from '../modules/tenants/schemas/tenant.schema';
 import {
   AutomationRule,
@@ -38,12 +38,16 @@ export class SeedService implements OnModuleInit {
       return;
     }
 
-    this.logger.log('🌱 Seeding demo data...');
+    this.logger.log('Seeding demo data...');
+
+    const tenantAId = new Types.ObjectId('6a460515c610ca63064b6027');
+    const tenantBId = new Types.ObjectId('6bb71626d721db74175c7138');
 
     // =============================================
     // Tenant A: Acme Corp — Shopify-focused rules
     // =============================================
     const tenantA = await this.tenantModel.create({
+      _id: tenantAId,
       name: 'Acme Corp',
       slug: 'acme-corp',
       webhookSecret: 'whsec_acme_secret_key_2024',
@@ -93,7 +97,7 @@ export class SeedService implements OnModuleInit {
         {
           type: 'webhook',
           config: {
-            url: 'https://httpbin.org/post', // Public test endpoint
+            url: 'https://jsonplaceholder.typicode.com/posts', // Reliable public test endpoint
             headers: { 'X-Source': 'webhook-engine' },
           },
         },
@@ -131,6 +135,7 @@ export class SeedService implements OnModuleInit {
     // Tenant B: Beta Store — Different platform rules
     // =============================================
     const tenantB = await this.tenantModel.create({
+      _id: tenantBId,
       name: 'Beta Store',
       slug: 'beta-store',
       webhookSecret: 'whsec_beta_secret_key_2024',
@@ -161,7 +166,7 @@ export class SeedService implements OnModuleInit {
           type: 'email',
           config: {
             to: 'team@betastore.com',
-            subject: 'Deal Won! 🎉',
+            subject: 'Deal Won!',
           },
         },
       ],
@@ -186,13 +191,13 @@ export class SeedService implements OnModuleInit {
       ],
     });
 
-    this.logger.log('✅ Seed data created successfully!');
+    this.logger.log('Seed data created successfully!');
     this.logger.log('');
-    this.logger.log('📋 Demo Tenants:');
+    this.logger.log('Demo Tenants:');
     this.logger.log(`   Tenant A: "${tenantA.name}" → ID: ${tenantA._id}`);
     this.logger.log(`   Tenant B: "${tenantB.name}" → ID: ${tenantB._id}`);
     this.logger.log('');
-    this.logger.log('🧪 Test with:');
+    this.logger.log('Test with:');
     this.logger.log(
       `   curl -X POST http://localhost:3000/webhooks/${tenantA._id}/shopify \\`,
     );

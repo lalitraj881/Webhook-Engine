@@ -6,11 +6,19 @@ import {
   Delete,
   Body,
   Param,
+  UseGuards,
 } from '@nestjs/common';
 import { RulesService } from './rules.service';
 import { CurrentTenant } from '../../common/decorators/tenant.decorator';
+import { TenantGuard } from '../../common/guards/tenant.guard';
+import { CreateRuleDto, UpdateRuleDto } from './dto/create-rule.dto';
 
+/**
+ * Automation rules API controller.
+ * TenantGuard validates the tenant exists and is active — server-side enforcement.
+ */
 @Controller('api/rules')
+@UseGuards(TenantGuard)
 export class RulesController {
   constructor(private readonly rulesService: RulesService) {}
 
@@ -23,14 +31,7 @@ export class RulesController {
   @Post()
   async create(
     @CurrentTenant() tenantId: string,
-    @Body()
-    body: {
-      name: string;
-      triggerSource: string;
-      triggerEventType: string;
-      conditions: Array<{ field: string; operator: string; value?: any }>;
-      actions: Array<{ type: string; config: Record<string, any> }>;
-    },
+    @Body() body: CreateRuleDto,
   ) {
     const rule = await this.rulesService.create(tenantId, body);
     return { data: rule };
@@ -40,7 +41,7 @@ export class RulesController {
   async update(
     @CurrentTenant() tenantId: string,
     @Param('ruleId') ruleId: string,
-    @Body() body: any,
+    @Body() body: UpdateRuleDto,
   ) {
     const rule = await this.rulesService.update(tenantId, ruleId, body);
     return { data: rule };

@@ -5,6 +5,7 @@ import EventsTable from './components/EventsTable';
 import JobsTable from './components/JobsTable';
 import JobDetail from './components/JobDetail';
 import RulesList from './components/RulesList';
+import { Zap, LayoutDashboard, Radio, Settings, FileJson, Building2 } from 'lucide-react';
 
 interface Tenant {
   _id: string;
@@ -53,7 +54,7 @@ export default function App() {
       <div className="app">
         <div className="loading">
           <div className="spinner"></div>
-          Loading...
+          Loading workspace...
         </div>
       </div>
     );
@@ -65,7 +66,10 @@ export default function App() {
       <header className="header">
         <div className="header-left">
           <div>
-            <div className="header-logo">⚡ Webhook Engine</div>
+            <div className="header-logo">
+              <Zap className="logo-icon" size={20} strokeWidth={2.5} />
+              Webhook Engine
+            </div>
             <div className="header-subtitle">Automation Dashboard</div>
           </div>
         </div>
@@ -86,27 +90,31 @@ export default function App() {
       </header>
 
       {/* Navigation Tabs */}
-      <nav className="nav-tabs">
-        {(['dashboard', 'events', 'jobs', 'rules'] as Tab[]).map((tab) => (
-          <button
-            key={tab}
-            className={`nav-tab ${activeTab === tab ? 'active' : ''}`}
-            onClick={() => { setActiveTab(tab); setSelectedJobId(null); }}
-          >
-            {tab === 'dashboard' && '📊 '}
-            {tab === 'events' && '📡 '}
-            {tab === 'jobs' && '⚙️ '}
-            {tab === 'rules' && '📋 '}
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </nav>
+      <div className="nav-tabs-container">
+        <nav className="nav-tabs">
+          {(['dashboard', 'events', 'jobs', 'rules'] as Tab[]).map((tab) => (
+            <button
+              key={tab}
+              className={`nav-tab ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => { setActiveTab(tab); setSelectedJobId(null); }}
+            >
+              {tab === 'dashboard' && <LayoutDashboard size={16} />}
+              {tab === 'events' && <Radio size={16} />}
+              {tab === 'jobs' && <Settings size={16} />}
+              {tab === 'rules' && <FileJson size={16} />}
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {/* Main Content */}
       <main className="main-content">
         {!selectedTenantId ? (
           <div className="empty-state">
-            <div className="empty-icon">🏢</div>
+            <div className="empty-icon">
+              <Building2 size={48} strokeWidth={1} />
+            </div>
             <p>No tenants found. Start the backend to seed demo data.</p>
           </div>
         ) : (

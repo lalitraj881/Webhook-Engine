@@ -1,6 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -9,7 +11,17 @@ async function bootstrap() {
     rawBody: true,
   });
 
+  // Body size limit — reject oversized payloads (1MB max)
+  // This runs BEFORE any controller logic to protect against abuse
+  app.use(json({ limit: '1mb' }));
+  app.use(urlencoded({ extended: true, limit: '1mb' }));
+
+  // Global exception filter — prevents raw stack traces from leaking to clients
+  app.useGlobalFilters(new AllExceptionsFilter());
+
   // Global validation pipe — rejects malformed payloads before they touch the DB
+  // whitelist: strips unknown properties
+  // forbidNonWhitelisted: throws error on unknown properties
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -24,9 +36,6 @@ async function bootstrap() {
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
     credentials: true,
   });
-
-  // Body size limit — reject oversized payloads
-  app.useGlobalPipes(new ValidationPipe());
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

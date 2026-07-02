@@ -83,25 +83,15 @@ export class ActionProcessor extends WorkerHost {
         // Action returned failure (but didn't throw)
         const error = result.error || {
           message: 'Action returned failure without error details',
+          code: 'UNKNOWN'
         };
 
-        // Record failed attempt
-        await this.jobsService.updateJobStatus(
-          jobHistoryId,
-          attemptNumber >= (job.opts.attempts || 3) ? 'failed' : 'retrying',
-          {
-            attemptNumber,
-            startedAt,
-            completedAt: new Date(),
-            status: 'failure',
-            error,
-          },
+        // Throw an error to let the catch block handle the recording and retry
+        const execError = new Error(
+          `Action failed: ${error.message} (code: ${error.code || 'UNKNOWN'})`
         );
-
-        // Throw to trigger BullMQ retry
-        throw new Error(
-          `Action failed: ${error.message} (code: ${error.code || 'UNKNOWN'})`,
-        );
+        (execError as any).code = error.code;
+        throw execError;
       }
     } catch (error: any) {
       this.logger.error(
@@ -109,20 +99,22 @@ export class ActionProcessor extends WorkerHost {
           `attempt=${attemptNumber}, error=${error.message}`,
       );
 
-      // If this was the last attempt, mark as failed
-      if (attemptNumber >= (job.opts.attempts || 3)) {
-        await this.jobsService.updateJobStatus(jobHistoryId, 'failed', {
+      // Record the failed attempt (both graceful failures and unexpected exceptions)
+      await this.jobsService.updateJobStatus(
+        jobHistoryId,
+        attemptNumber >= (job.opts.attempts || 3) ? 'failed' : 'retrying',
+        {
           attemptNumber,
           startedAt,
           completedAt: new Date(),
           status: 'failure',
           error: {
             message: error.message,
-            code: 'EXECUTION_ERROR',
+            code: error.code || 'EXECUTION_ERROR',
             stack: error.stack,
           },
-        });
-      }
+        }
+      );
 
       // Re-throw for BullMQ retry mechanism
       throw error;

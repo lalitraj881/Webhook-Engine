@@ -8,12 +8,12 @@ TENANT_ID=${1:-"REPLACE_WITH_TENANT_ID"}
 BASE_URL=${2:-"http://localhost:3000"}
 EVENT_ID="evt_$(date +%s)_$(( RANDOM % 1000 ))"
 
-echo "📡 Sending Shopify order webhook..."
+echo "Sending Shopify order webhook..."
 echo "   Tenant: $TENANT_ID"
 echo "   Event ID: $EVENT_ID"
 echo ""
 
-curl -s -w "\n\n⏱  Response time: %{time_total}s\n" \
+curl -s -w "\n\nResponse time: %{time_total}s\n" \
   -X POST "$BASE_URL/webhooks/$TENANT_ID/shopify" \
   -H "Content-Type: application/json" \
   -H "X-Webhook-Id: $EVENT_ID" \
@@ -35,4 +35,4 @@ curl -s -w "\n\n⏱  Response time: %{time_total}s\n" \
   }" | python3 -m json.tool 2>/dev/null || cat
 
 echo ""
-echo "✅ Check the dashboard to see the job processing!"
+echo "Check the dashboard to see the job processing!"

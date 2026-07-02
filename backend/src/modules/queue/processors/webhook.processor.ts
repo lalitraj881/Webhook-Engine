@@ -1,8 +1,6 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
-import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { Job, Queue } from 'bullmq';
 import { RulesService } from '../../rules/rules.service';
 import { RuleEngineService } from '../../rules/rule-engine.service';
 import { JobsService } from '../../jobs/jobs.service';
@@ -78,7 +76,7 @@ export class WebhookProcessor extends WorkerHost {
       }
 
       // Step 2: Evaluate rule conditions against the payload
-      const matchedRules = await this.ruleEngine.evaluate(
+      const matchedRules = this.ruleEngine.evaluate(
         candidateRules,
         payload,
       );

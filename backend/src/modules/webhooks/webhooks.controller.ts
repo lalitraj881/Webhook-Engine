@@ -1,14 +1,12 @@
 import {
   Controller,
   Post,
-  Get,
   Param,
   Body,
   Headers,
   UseGuards,
   UseInterceptors,
   Req,
-  Query,
   HttpCode,
   HttpStatus,
   Logger,
@@ -16,7 +14,6 @@ import {
 import { WebhooksService } from './webhooks.service';
 import { SignatureGuard } from '../../common/guards/signature.guard';
 import { IdempotencyInterceptor } from '../../common/interceptors/idempotency.interceptor';
-import { CurrentTenant } from '../../common/decorators/tenant.decorator';
 
 /**
  * Webhook ingestion controller.
@@ -29,6 +26,9 @@ import { CurrentTenant } from '../../common/decorators/tenant.decorator';
  * 3. ValidationPipe (global) → payload structure check
  *
  * If any guard fails, we reject immediately and never touch MongoDB.
+ *
+ * Note: Read operations (listing events) are handled by EventsController
+ * at /api/events, which has proper tenant middleware applied.
  */
 @Controller('webhooks')
 export class WebhooksController {
@@ -84,31 +84,6 @@ export class WebhooksController {
     };
   }
 
-  /** List webhook events for a tenant (API) */
-  @Get()
-  async listEvents(
-    @CurrentTenant() tenantId: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    const result = await this.webhooksService.findByTenant(
-      tenantId,
-      page || 1,
-      limit || 50,
-    );
-    return result;
-  }
-
-  /** Get a single event */
-  @Get(':eventId')
-  async getEvent(
-    @CurrentTenant() tenantId: string,
-    @Param('eventId') eventId: string,
-  ) {
-    const event = await this.webhooksService.findOne(tenantId, eventId);
-    return { data: event };
-  }
-
   /** Remove sensitive headers before storing */
   private sanitizeHeaders(
     headers: Record<string, string>,
@@ -131,3 +106,4 @@ export class WebhooksController {
     return safe;
   }
 }
+

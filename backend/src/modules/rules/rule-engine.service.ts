@@ -1,10 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import {
-  AutomationRule,
-  AutomationRuleDocument,
-} from './schemas/automation-rule.schema';
+import { AutomationRuleDocument } from './schemas/automation-rule.schema';
 
 /**
  * Core rule evaluation engine.
@@ -67,10 +62,10 @@ export class RuleEngineService {
    * Evaluate all active rules for a given event.
    * Returns an array of rules whose conditions all match the payload.
    */
-  async evaluate(
+  evaluate(
     rules: AutomationRuleDocument[],
     payload: Record<string, any>,
-  ): Promise<AutomationRuleDocument[]> {
+  ): AutomationRuleDocument[] {
     const matchedRules: AutomationRuleDocument[] = [];
 
     for (const rule of rules) {

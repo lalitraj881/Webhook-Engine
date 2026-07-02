@@ -75,7 +75,8 @@ export class WebhooksService {
       },
       {
         // Job ID based on idempotency key — BullMQ dedup layer
-        jobId: `wh-${data.idempotencyKey}`,
+        // Note: BullMQ strictly forbids colons (:) in custom job IDs
+        jobId: `wh-${data.idempotencyKey.replace(/:/g, '-')}`,
         attempts: 3,
         backoff: { type: 'exponential', delay: 2000 },
       },

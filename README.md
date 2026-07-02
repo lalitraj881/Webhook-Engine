@@ -1,126 +1,244 @@
-# Debales AI — Async Webhook Automation Engine
+# Debales AI - Webhook Automation Engine
 
-A robust, multi-tenant webhook automation engine built with NestJS, BullMQ, Redis, and MongoDB. It reliably ingests webhooks, evaluates tenant-specific automation rules, and dispatches actions asynchronously.
+This project is a backend system that listens for incoming webhook events (like a Shopify order or a payment failure), checks if any automation rules apply, and then runs an action automatically - like sending an email or calling another API.
 
-## 🚀 Quick Start
+Everything runs reliably in the background. If something crashes or an external API is down, the system retries automatically and keeps a record of every attempt so you can see exactly what happened.
 
-Ensure you have Docker and Docker Compose installed.
+---
+
+## Getting Started
+
+You only need **Docker Desktop** installed. That's it. No Node.js, no MongoDB, no Redis - Docker handles all of it.
+
+### Step 1 - Download the code
+
+Open a terminal and run:
 
 ```bash
-# 1. Start the entire stack (MongoDB, Redis, Backend, Frontend)
+git clone https://github.com/lalitraj881/Webhook-Engine.git
+cd Webhook-Engine
+```
+
+### Step 2 - Copy the environment file
+
+This creates a config file the app needs to know things like database addresses and ports.
+
+Mac / Linux:
+```bash
+cp .env.example .env
+cp .env.example backend/.env
+```
+
+Windows (PowerShell):
+```powershell
+Copy-Item .env.example .env
+Copy-Item .env.example backend/.env
+```
+
+### Step 3 - Start everything
+
+This one command downloads, builds, and starts the database, queue, backend API, and dashboard all at once:
+
+```bash
 docker-compose up -d --build
+```
 
-# 2. View logs if you want to see the system running
+Wait about 15 seconds for everything to boot up.
+
+### Step 4 - Open the dashboard
+
+Go to: **http://localhost:5173**
+
+The first time you start the app, it automatically creates two demo companies (tenants) with pre-configured rules - so you can start testing right away.
+
+---
+
+## Running the Test Scenarios
+
+We've included simple scripts you can run from the terminal to simulate incoming webhooks. No Postman or API tools needed.
+
+Open a new terminal window in the project root folder before running these.
+
+---
+
+### Test 1 - Normal webhook (happy path)
+
+This sends a fake Shopify order for $750 to Company A ("Acme Corp"). They have a rule that fires on any order over $500.
+
+Mac / Linux:
+```bash
+./scripts/send-webhook.sh 6a460515c610ca63064b6027
+```
+
+Windows:
+```powershell
+.\scripts\send-webhook.ps1 -TenantId 6a460515c610ca63064b6027
+```
+
+**What you'll see on the dashboard:**
+
+Make sure "Acme Corp" is selected in the tenant dropdown at the top right.
+
+- **Dashboard tab** - The "Total Jobs" counter goes up, and the "Completed" count increases.
+- **Events tab** - A new row appears with source "shopify", event type "order.created", and a green "processed" badge.
+- **Jobs tab** - Three separate rows appear (one for each action the rule ran). You'll see:
+  - "High-Value Order Alert" with an `email` badge - status: completed
+  - "High-Value Order Alert" with a `log` badge - status: completed
+  - "Order Slack Notification" with a `webhook` badge - status: completed
+
+Each row shows "1" in the Attempts column, meaning it worked first try. Click "View Details" on any row to see the full execution result including the response from the external API.
+
+---
+
+### Test 2 - Sending the same webhook twice (deduplication)
+
+This sends the exact same webhook two times, one second apart.
+
+Mac / Linux:
+```bash
+./scripts/send-duplicate.sh 6a460515c610ca63064b6027
+```
+
+Windows:
+```powershell
+.\scripts\send-duplicate.ps1 -TenantId 6a460515c610ca63064b6027
+```
+
+The system processes the first one normally. When the second arrives, it recognises it's a duplicate and ignores it. You will only ever see one job - never two. This is how we guarantee nothing gets processed twice, even if a platform sends it again.
+
+**What you'll see on the dashboard:**
+
+- **Events tab** - Only ONE new event row appears, even though the script sent the webhook twice. The second one was caught before it even hit the database.
+- **Jobs tab** - The job count goes up by exactly 3 (for the 3 actions), not 6. The duplicate was dropped before any jobs were created.
+
+The terminal output from the script will also show you the second request returned `"status": "duplicate"` instead of `"status": "accepted"`.
+
+---
+
+### Test 3 - Failure, retries, and replay (Company B)
+
+This sends a webhook to Company B ("Beta Store"). Their rule is deliberately configured to call a broken API that always returns a 500 error.
+
+> Note: You can also use `send-webhook.ps1` with Beta Store's tenant ID and you'll get the same result - Beta Store's failure rule listens for the same `shopify / order.created` event type.
+
+Mac / Linux:
+```bash
+./scripts/trigger-failure.sh 6bb71626d721db74175c7138
+```
+
+Windows:
+```powershell
+.\scripts\trigger-failure.ps1 -TenantId 6bb71626d721db74175c7138
+```
+
+**What you'll see on the dashboard:**
+
+Switch to "Beta Store" in the top-right tenant dropdown first.
+
+- **Jobs tab** - A new row appears for "Intentional Failure Rule (Demo)" with a `webhook` badge. The status column will cycle through:
+  1. `pending` (just arrived)
+  2. `retrying` (first attempt failed, waiting to try again)
+  3. `retrying` (second attempt failed)
+  4. `failed` (all 3 attempts exhausted)
+
+- **View Details** - Click "View Details" on the failed job. You'll see a full timeline showing Attempt #1, Attempt #2, and Attempt #3, each with:
+  - The exact timestamp it started and finished
+  - The error message: `HTTP 500: INTERNAL SERVER ERROR`
+
+- **Replay** - At the bottom of the detail view there is a "Replay This Job" button. Click it. The system creates a brand new job with the same original payload and runs it through the retry cycle again. A new row will appear in the Jobs tab for the replayed attempt.
+
+---
+
+
+## Troubleshooting & Useful Docker Commands
+
+**See what the app is doing right now:**
+```bash
+docker-compose logs -f
+```
+
+**See only the backend logs (good for watching jobs run in real-time):**
+```bash
 docker-compose logs -f backend
-
-# 3. Open the Dashboard in your browser
-# URL: http://localhost:5173
 ```
 
-On first startup, the application will automatically run the seed script to create two demo tenants and their automation rules.
-
-## 🧪 How to Simulate Webhooks & Failures
-
-We provide convenient shell scripts to test the engine.
-
-### 1. Happy Path (Shopify Order)
-Sends a Shopify order that matches "Tenant A's" high-value order rule.
+**Restart the app cleanly:**
 ```bash
-./scripts/send-webhook.sh <TENANT_A_ID>
-# Note: You can copy the Tenant A ID from the dashboard or the backend startup logs.
+docker-compose down
+docker-compose up -d --build
 ```
 
-### 2. Deduplication (Exactly-Once Processing)
-Sends the exact same webhook payload twice. The second request will be rejected and acknowledged without creating a duplicate job.
-```bash
-./scripts/send-duplicate.sh <TENANT_A_ID>
-```
+**Wipe the database and start completely fresh:**
 
-### 3. Failure & Replay
-Triggers a rule specifically designed to fail (makes an HTTP POST to an endpoint returning 500).
+The demo tenants and rules get re-created automatically on the next boot, so your test scripts will still work.
 ```bash
-./scripts/trigger-failure.sh <TENANT_B_ID>
+docker-compose down -v
+docker-compose up -d --build
 ```
-To replay this failure:
-1. Open the UI at `http://localhost:5173`
-2. Select **Tenant B** from the top right dropdown.
-3. Go to the **Jobs** tab. Wait for the job to exhaust its 3 retries and enter the `failed` state.
-4. Click **View Details**.
-5. Click the **🔄 Replay This Job** button. You'll see a new job created with the exact same payload.
 
 ---
 
-## 🏛️ Architecture & Data Model
+## How It's Built
 
-### Data Model Justification
+### The four database collections
 
-Our MongoDB schema is built around four primary collections, enforcing multi-tenancy at the query level:
+The system uses MongoDB with four collections. Here's why each one exists:
 
-1. **`tenants`**: Stores tenant config, including a unique `webhookSecret` for HMAC signature verification. This ensures one tenant cannot spoof events for another.
-2. **`webhook_events`**: The raw ingestion log.
-   - **Why store raw?** We need an audit trail *before* processing begins.
-   - **Dedup Index:** We maintain a unique index on `idempotencyKey` as a secondary safety net to Redis.
-3. **`automation_rules`**: The declarative rules engine.
-   - Uses a document structure of `conditions` (field, operator, value) and `actions` (type, config).
-4. **`job_history`**: The observability layer.
-   - **Why attempts as an array?** By embedding `attempts` within the job document, a single query retrieves the full lifecycle of a job, making the UI blazing fast without complex JOINs (lookups).
-   - Stores the `eventPayload` directly on the job to guarantee that if a replay happens weeks later, it executes against the *exact* data from that point in time, even if the raw event was purged.
+1. **`tenants`** - Stores each company's config, including a secret key used to verify that incoming webhooks are actually from them and not someone faking it.
 
-### Queue Design (BullMQ)
+2. **`webhook_events`** - Every incoming webhook is saved here before any processing starts. This gives us a full audit trail. There's also a unique index that acts as a backup deduplication check, in case Redis restarts and forgets about a recent event.
 
-We use a **Two-Queue Architecture**:
-1. **`webhook-processing`**: Fast queue. Reads the event, evaluates rules.
-2. **`action-dispatch`**: Slower queue. Actually makes the HTTP calls or sends emails.
+3. **`automation_rules`** - The rules each company has configured. Each rule says: "when event type X arrives from source Y, and the payload matches condition Z, do action A."
 
-**Why?** Independent scaling and fault isolation. A slow external API responding to our actions shouldn't cause a backlog in evaluating incoming webhooks.
-
-**Crash Recovery & Failure Handling:**
-- **Stalled Jobs:** If a worker crashes mid-execution (OOM, killed), BullMQ detects the stalled lock after `lockDuration` expires and automatically re-enqueues the job. *It does not silently disappear.*
-- **Exponential Backoff:** Action failures are retried 3 times with exponential backoff (e.g., 5s, 15s, 45s) to avoid hammering failing external services.
+4. **`job_history`** - Records every job execution. Each job stores all its retry attempts as an array inside the same document. This means the dashboard only needs one database query to show the full history of a job - no extra lookups needed. The original event payload is also saved here, so replays always use the exact same data even if the original event has been cleaned up.
 
 ---
 
-## 📈 The Scaling Question
+### The queue design
 
-> **Scenario:** 500,000 orders/day × 3 webhooks = ~1,500,000 events/day from ONE tenant. Spikes of 10x during flash sales.
+The system uses two separate queues:
 
-At ~1.5 million events per day, the steady-state load is roughly **17 events per second**. During a 10x flash sale spike, this jumps to **170 events per second**. 
+1. **`webhook-processing`** - A fast queue. It receives the raw event, looks up matching rules, and fans out to the next queue.
+2. **`action-dispatch`** - A slower queue. This is where the actual work happens - HTTP calls, emails, logs.
 
-Here is how the current design handles this, where it breaks first, and how I would evolve it.
+They're separate on purpose. If an external API is slow or down, it only affects the dispatch queue. New webhooks keep flowing in and getting evaluated without any backlog.
 
-### Phase 1: How the Current Design Handles 170 req/sec
+If a worker process crashes in the middle of a job, BullMQ detects this and automatically re-queues the job once the lock expires. Nothing gets silently lost.
 
-The current single-node NestJS application handles this surprisingly well due to the architectural choices:
+Failed actions are retried three times with increasing delays (5s, then 15s, then 45s) so we don't hammer a struggling external service.
 
-1. **Ingestion is ultra-lightweight:** The webhook controller does zero complex logic. It does an HMAC verification, an atomic Redis `SETNX` (O(1)), a single MongoDB insert, and a BullMQ enqueue (Redis write). A standard NestJS process on a decent container can handle 1,000+ req/sec of this workload. The 200 OK goes out immediately.
-2. **Asynchronous pressure relief:** The spike to 170/sec hits the queue, not the worker. If the rule engine (processing queue) can only process 50/sec, the queue simply grows. No webhooks are dropped.
-3. **Redis handles deduplication effortlessly:** Redis can easily sustain 100,000+ operations per second. 170 SETNX operations per second is rounding error.
+---
 
-### Phase 2: Where It Breaks First
+## The Scaling Question
 
-The system will break in the **Processing and Dispatch layers**, specifically:
+The brief asked: what happens when one enterprise tenant sends 500,000 orders per day, each triggering three webhooks - 1.5 million events a day, with 10x spikes during flash sales?
 
-**Bottleneck 1: Action Dispatch Latency (Connection Exhaustion)**
-If rules trigger HTTP webhooks (external API calls), and those external APIs become slow during the flash sale, our `action-dispatch` workers will spend all their time waiting on network I/O. With `concurrency: 10`, 10 slow requests (e.g., 5-second timeouts) will completely halt the queue processing, causing a massive backlog.
+That works out to about 17 events per second normally, and up to 170 per second during a spike.
 
-**Bottleneck 2: MongoDB Write Lock / Connection Pool**
-While 170 inserts/sec is fine, every processed job updates the `job_history` document to add attempts. If we are processing 170 events/sec * 2 matching rules = 340 updates/sec. Under load, these concurrent document updates can exhaust the MongoDB connection pool and increase latency on the ingestion side (since they share the database).
+**Here's how the current design handles that:**
 
-### Phase 3: How I Would Change It (In Order)
+The ingestion endpoint is intentionally lightweight. When a webhook comes in, all it does is verify the HMAC signature, check Redis for duplicates, write one record to MongoDB, and push a job onto the queue. The 200 response goes back immediately. A single Node.js process can easily handle well over 1,000 requests per second doing this kind of work. The 10x spike hits the queue, not the API - so nothing gets dropped.
 
-When scaling to this enterprise level, I would implement the following changes in this exact order:
+**Where it breaks first:**
 
-**1. Scale the Action Workers Horizontally (Easiest Win)**
-- **What:** Run the `action-dispatch` processors on entirely separate Node.js processes/containers from the ingestion API.
-- **Why:** Action dispatching is network-bound. We can scale these out to 50 or 100 concurrent workers without touching the web ingestion tier, ensuring ingestion latency remains < 200ms regardless of how backed up the actions queue gets.
+The first bottleneck will be the action dispatch workers. With 10 concurrent workers, if the external APIs start responding slowly (say, 5 seconds each), all 10 workers get tied up waiting and the queue stalls. More events pile up faster than they get processed.
 
-**2. Circuit Breakers for Actions**
-- **What:** Implement a circuit breaker (e.g., using `opossum`) in the `ActionFactory`.
-- **Why:** If an external API is down, we shouldn't waste 10 seconds timing out 3 times per job, while blocking the queue. The circuit breaker trips and immediately fails the jobs, sending them to the dead letter queue (or marking them `failed` for manual replay later), freeing up worker capacity for healthy endpoints.
+The second bottleneck is MongoDB writes. At 170 events/sec matching 2 rules each, that's 340 document updates per second. Under sustained load, this can exhaust the connection pool and start slowing down ingestion.
 
-**3. Optimize MongoDB Ingestion (Batch Writes)**
-- **What:** Instead of inserting `webhook_events` one by one, push them to an in-memory buffer (or Redis list) and flush to MongoDB using `insertMany` every 100ms or 1000 records.
-- **Why:** This reduces database IOPS exponentially.
+**What I'd fix, in order:**
 
-**4. Dedicated Queue Per Tenant (Advanced)**
-- **What:** If the enterprise tenant is flooding the system, they will cause "Noisy Neighbor" issues—delaying jobs for smaller tenants. We would use BullMQ's Flow/Group features to create isolated processing queues per tenant or employ fair-share queuing logic.
+**1. Scale the dispatch workers horizontally**
+
+Run the `action-dispatch` processors in separate containers, completely isolated from the ingestion API. These are network-bound, so spinning up 50 or 100 of them in parallel is straightforward and keeps ingestion latency under 200ms no matter how backed up the actions queue gets.
+
+**2. Add circuit breakers**
+
+If an external API is down, we should stop trying after the first few failures rather than burning through all 3 retry attempts on every job. A circuit breaker (using a library like `opossum`) trips after repeated failures and immediately marks jobs as failed for manual replay - freeing up workers for healthy endpoints.
+
+**3. Batch MongoDB writes**
+
+Instead of writing one webhook event at a time, collect them in a short buffer and flush every 100ms using `insertMany`. This cuts database round-trips dramatically at high volume.
+
+**4. Per-tenant queues (if needed)**
+
+If one enterprise tenant is sending 10x the normal volume during a flash sale, they risk slowing down everyone else's jobs. The fix is isolated queues per tenant, or a fair-share scheduling approach so no single tenant can starve the others.

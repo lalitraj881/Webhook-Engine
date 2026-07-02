@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { Webhook } from 'lucide-react';
 
 interface WebhookEvent {
   _id: string;
@@ -50,7 +51,7 @@ export default function EventsTable({ tenantId }: Props) {
 
       {events.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">📡</div>
+          <div className="empty-icon"><Webhook size={48} strokeWidth={1} /></div>
           <p>No webhook events received yet. Send a test webhook!</p>
         </div>
       ) : (

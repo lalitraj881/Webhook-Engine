@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { Activity, RefreshCw, ChevronRight } from 'lucide-react';
 
 interface JobHistoryItem {
   _id: string;
@@ -66,7 +67,7 @@ export default function JobsTable({ tenantId, onSelectJob }: Props) {
 
         {jobs.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">⚙️</div>
+            <div className="empty-icon"><Activity size={48} strokeWidth={1} /></div>
             <p>No jobs yet. Send a webhook to trigger automation rules!</p>
           </div>
         ) : (
@@ -87,7 +88,7 @@ export default function JobsTable({ tenantId, onSelectJob }: Props) {
                   <td>{new Date(job.createdAt).toLocaleString()}</td>
                   <td>
                     <strong>{job.ruleName}</strong>
-                    {job.isReplay && <span className="replay-badge">🔄 Replay</span>}
+                    {job.isReplay && <span className="replay-badge"><RefreshCw size={10} /> Replay</span>}
                   </td>
                   <td>
                     <span className={`action-tag ${job.actionType}`}>
@@ -103,7 +104,7 @@ export default function JobsTable({ tenantId, onSelectJob }: Props) {
                       className="btn btn-sm btn-ghost"
                       onClick={() => onSelectJob(job._id)}
                     >
-                      View Details →
+                      View Details <ChevronRight size={14} style={{ marginLeft: 4 }} />
                     </button>
                   </td>
                 </tr>

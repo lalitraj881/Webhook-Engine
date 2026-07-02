@@ -4,11 +4,18 @@ import {
   Post,
   Param,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { JobsService } from './jobs.service';
 import { CurrentTenant } from '../../common/decorators/tenant.decorator';
+import { TenantGuard } from '../../common/guards/tenant.guard';
 
+/**
+ * Job history API controller.
+ * TenantGuard validates the tenant exists and is active — server-side enforcement.
+ */
 @Controller('api/jobs')
+@UseGuards(TenantGuard)
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 

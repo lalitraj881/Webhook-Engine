@@ -48,7 +48,7 @@ export class RulesService {
       name: string;
       triggerSource: string;
       triggerEventType: string;
-      conditions: Array<{ field: string; operator: string; value?: any }>;
+      conditions?: Array<{ field: string; operator: string; value?: any }>;
       actions: Array<{ type: string; config: Record<string, any> }>;
     },
   ): Promise<AutomationRuleDocument> {
