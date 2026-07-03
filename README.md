@@ -1,4 +1,4 @@
-# Debales AI - Webhook Automation Engine
+# Async Webhook Automation Engine
 
 This project is a backend system that listens for incoming webhook events (like a Shopify order or a payment failure), checks if any automation rules apply, and then runs an action automatically - like sending an email or calling another API.
 
