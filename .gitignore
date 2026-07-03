@@ -12,6 +12,3 @@ build/
 webhook-engine-mongo/
 webhook-engine-redis/
 
-# Recording scripts and brief document — not for repo
-loom_script.*
-*.docx
