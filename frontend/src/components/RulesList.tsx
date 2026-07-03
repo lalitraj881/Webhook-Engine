@@ -4,22 +4,34 @@ import { ListChecks, Webhook, Link, Mail, Terminal } from 'lucide-react';
 
 interface Condition {
   field: string;
-  operator: 'equals' | 'contains' | 'greater_than' | 'less_than';
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'less_than' | 'contains' | 'exists';
   value: any;
+}
+
+interface Action {
+  type: 'webhook' | 'email' | 'log';
+  config: Record<string, any>;
 }
 
 interface Rule {
   _id: string;
   name: string;
+  isActive: boolean;
   triggerSource: string;
   triggerEventType: string;
   conditions: Condition[];
-  actionType: string;
-  actionConfig: any;
+  actions: Action[];
 }
 
 interface Props {
   tenantId: string;
+}
+
+function ActionIcon({ type }: { type: string }) {
+  if (type === 'webhook') return <Webhook size={12} />;
+  if (type === 'email') return <Mail size={12} />;
+  if (type === 'log') return <Terminal size={12} />;
+  return null;
 }
 
 export default function RulesList({ tenantId }: Props) {
@@ -55,7 +67,7 @@ export default function RulesList({ tenantId }: Props) {
           rules.map((rule) => (
             <div key={rule._id} className="rule-card">
               <div className="rule-name">{rule.name}</div>
-              
+
               <div className="rule-trigger">
                 <div className="rule-trigger-item">
                   <Link size={14} style={{ opacity: 0.7 }} /> Source: <strong>{rule.triggerSource}</strong>
@@ -71,21 +83,27 @@ export default function RulesList({ tenantId }: Props) {
                   <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Conditions (AND)</div>
                   {rule.conditions.map((c, i) => (
                     <div key={i} style={{ fontSize: '13px', fontFamily: 'var(--font-mono)' }}>
-                      <span style={{ color: 'var(--color-info)' }}>{c.field}</span> 
-                      <span style={{ color: 'var(--color-text-secondary)', margin: '0 8px' }}>{c.operator}</span> 
+                      <span style={{ color: 'var(--color-info)' }}>{c.field}</span>{' '}
+                      <span style={{ color: 'var(--color-text-secondary)', margin: '0 8px' }}>{c.operator}</span>{' '}
                       <span style={{ color: 'var(--color-success)' }}>{JSON.stringify(c.value)}</span>
                     </div>
                   ))}
                 </div>
               )}
-              
-              <div className="rule-actions-list" style={{ marginTop: '12px' }}>
-                <span className={`action-tag ${rule.actionType}`}>
-                  {rule.actionType === 'webhook' && <Webhook size={12} />}
-                  {rule.actionType === 'email' && <Mail size={12} />}
-                  {rule.actionType === 'log' && <Terminal size={12} />}
-                  Action: {rule.actionType}
-                </span>
+
+              {rule.conditions.length === 0 && (
+                <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '6px', fontStyle: 'italic' }}>
+                  No conditions — fires on every matching event
+                </div>
+              )}
+
+              <div className="rule-actions-list" style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {rule.actions.map((action, i) => (
+                  <span key={i} className={`action-tag ${action.type}`}>
+                    <ActionIcon type={action.type} />
+                    {action.type}
+                  </span>
+                ))}
               </div>
             </div>
           ))
